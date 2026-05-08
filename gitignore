@@ -1,0 +1,17 @@
+# Environment variables - never commit your API key!
+.env
+
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environment
+venv/
+env/
+
+# Generated report files
+*.txt
+
+# OS files
+.DS_Store

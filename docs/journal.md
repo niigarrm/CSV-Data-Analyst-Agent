@@ -132,3 +132,33 @@ The system currently uses four tools, all defined in `tools.py`:
 - Receives the user's question and the list of available tools  
 - Returns a tool selection decision or a direct text response  
 - All calls are wrapped in error handling with retry logic
+
+
+## Step 3 – 17.05
+
+**Date:** 17.05.2025  
+**Status:** Testing and deployment preparation
+
+### Description of the Testing Process
+
+As stated in the project requirements, testing was performed in parallel
+with implementation rather than at the end of the project. As each tool
+function was added to `tools.py` during Step 2, a corresponding unit test
+was written in `tests/test_tools.py` using the `pytest` framework.
+
+The testing process covers three layers, each mapping to a specific part
+of the architecture defined in Step 2:
+
+1. **Unit testing** — each tool function (`load_csv`, `calculate_statistics`,
+   `get_dataframe_info`, `save_report`) is tested independently with
+   controlled input data. This isolates the deterministic logic from the
+   non-deterministic Claude API responses.
+2. **Input validation testing** — invalid inputs such as missing files,
+   empty CSVs, and unsupported question types are tested to confirm the
+   system fails gracefully, as promised in the error handling design.
+3. **Functional testing** — the full workflow (`main.py` → `agent.py` →
+   `tools.py`) is tested manually with sample CSV files within the defined
+   project scope (up to 10 MB, 100,000 rows, 50 columns) to confirm the
+   end-to-end user experience works as intended.
+
+All automated tests run from the project root with:

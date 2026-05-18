@@ -162,3 +162,139 @@ of the architecture defined in Step 2:
    end-to-end user experience works as intended.
 
 All automated tests run from the project root with:
+---
+
+### List and Explanation of Test Scenarios
+
+The test scenarios were chosen to cover both the **happy path** (typical
+use by the target users described in Step 1) and **edge cases** that real
+non-technical users are likely to trigger.
+
+**Scenario 1 — Loading a valid CSV file**  
+Input: Path to `sales.csv` with columns `product`, `region`, `revenue`, `date`.  
+Expected result: A `pandas` DataFrame with 4 columns is returned.  
+Verifies: `load_csv()` works correctly under normal conditions.
+
+**Scenario 2 — Loading a non-existent file**  
+Input: A path that does not exist on the filesystem.  
+Expected result: `FileNotFoundError` raised with the message `"File not found: <path>"`.  
+Verifies: Input validation prevents the system from crashing when a user
+mistypes a file path.
+
+**Scenario 3 — Loading an empty CSV**  
+Input: A valid path pointing to an empty CSV file.  
+Expected result: `ValueError` raised with the message `"The CSV file is empty."`.  
+Verifies: The system handles edge cases where the file exists but contains
+no usable data.
+
+**Scenario 4 — Calculating the average of a numeric column**  
+Input: A DataFrame with a `revenue` column and the question
+*"What is the average revenue?"*.  
+Expected result: A string containing the correctly calculated mean
+(e.g. `"Average of 'revenue': 45200.00"`).  
+Verifies: The statistical analysis tool produces mathematically accurate
+results — directly enforcing the project's promise that the AI never
+performs the maths itself.
+
+**Scenario 5 — Asking about a non-numeric column**  
+Input: A DataFrame with only string columns and the question
+*"What is the average?"*.  
+Expected result: The string `"No numeric columns found in the CSV file."`.  
+Verifies: The tool handles edge cases gracefully and provides helpful
+feedback rather than crashing.
+
+**Scenario 6 — Saving a session report**  
+Input: A list of three question-answer pairs and the output path `report.txt`.  
+Expected result: A `.txt` file is created with all questions and answers
+formatted correctly, and the function returns `"Report saved to: report.txt"`.  
+Verifies: The report writer tool functions correctly and provides the
+session record promised in the project goal.
+
+**Scenario 7 — End-to-end functional test**  
+Input: A real `sales.csv` file loaded through `main.py`, with the user
+asking the worked example question: *"Which region brought in the most
+money last quarter?"*.  
+Expected result: The agent calls `calculate_statistics()`, receives the
+result, and returns a clear natural-language answer through the Claude API.  
+Verifies: The full agent loop (the six-step decision process described in
+Step 2) works correctly end-to-end.
+
+---
+
+### Deployment Preparation
+
+The system is designed as a **local command-line tool**, which is the
+most appropriate deployment model for the target users (students, small
+business owners, researchers, and junior analysts). It avoids the
+complexity of hosting a web service while still being installable on any
+machine with Python 3.10 or higher.
+
+Another user can install and run the system by following these steps:
+
+1. **Clone the repository** from GitHub
+2. **Install dependencies**: `pip install -r requirements.txt`
+3. **Configure the API key**: copy `.env.example` to `.env` and replace
+   the placeholder with a valid Anthropic API key
+4. **Run the program**: `python src/main.py`
+
+All dependencies (`anthropic`, `pandas`, `python-dotenv`, `pytest`) are
+listed in `requirements.txt`. The API key is loaded from the `.env` file
+using `python-dotenv` so that no sensitive credentials are hardcoded into
+the source code. The `.gitignore` file excludes the `.env` file from
+version control, preventing accidental key leaks.
+
+For future production deployment, this system could be packaged as:
+
+- A **PyPI package** for easier installation via `pip install csv-analyst-agent`
+- A **Docker container** for fully reproducible environments
+- A **web service** using FastAPI if multiple users need simultaneous access,
+  although this would require additional work on session management and
+  authentication
+
+A **staged release** approach is recommended: internal testing with
+sample CSVs first, then a limited release to a small group of target
+users for feedback, and finally a wider public release once edge cases
+discovered during real use have been addressed.
+
+---
+
+### Data Conversion and Porting
+
+The system handles data conversion at four points to ensure correctness
+and consistency between components. Each conversion step corresponds to
+a boundary between the tools described in Step 2.
+
+**1. CSV file → `pandas` DataFrame**  
+The input data starts as a raw CSV file on disk in standard tabular format
+with a header row. The `load_csv()` function uses `pandas.read_csv()` to
+parse the file into a structured DataFrame, which becomes the unified
+internal data format used by all other tools. `pandas` automatically
+infers column data types (numeric, string, date, boolean) so subsequent
+tools can rely on consistent typing.
+
+**2. DataFrame → analysis result string**  
+When the statistical analysis tool runs, it converts numeric DataFrame
+results into formatted strings (e.g. `f"Average of 'revenue': {value:.2f}"`)
+so they can be embedded into the prompt sent to the Claude API as plain
+text. This conversion is necessary because the Claude API only accepts
+text input, not raw `pandas` objects.
+
+**3. Claude API JSON response → final user output**  
+The Claude API returns responses as structured JSON objects (as shown in
+the tools section of Step 1). The agent extracts the `.content[0].text`
+field to obtain a clean string, which is then displayed in the terminal.
+The other fields in the response (`id`, `model`, `usage`, `stop_reason`)
+are metadata and are discarded for user-facing output.
+
+**4. Session log (list of dicts) → text report file**  
+At the end of a session, the in-memory list of question-answer
+dictionaries accumulated in `agent.py` is converted into formatted plain
+text by `save_report()` and written to a `.txt` file using Python's
+built-in `open()` function.
+
+At each conversion step, data integrity is preserved through type
+validation and error handling. For example, if a numeric column contains
+unexpected non-numeric values, `pandas` handles the conversion safely
+and the tool reports the issue rather than crashing. This consistent
+approach to data conversion is what allows the system to deliver the
+accurate, reliable insights promised in Step 1.
